@@ -13,6 +13,7 @@ import time
 import re
 import base64
 
+links = []
 renaming_operations = {}
 
 # Pattern 1: S01E02 or S01EP02
@@ -245,9 +246,6 @@ async def auto_rename_files(client, message):
             ph_path,
             caption=caption,
         )
-
-
-       links = []
        for quality in qualities:
             # Step 2: Show progress for downloading
             await post.edit_caption(caption + f"\n\nDownloading {quality}...")
