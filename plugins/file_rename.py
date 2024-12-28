@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
-from pyrogram.types import InputMediaDocument, Message, InputMediaPhoto,InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InputMediaDocument, Message 
 from PIL import Image
 from datetime import datetime
 from hachoir.metadata import extractMetadata
@@ -11,10 +11,10 @@ from config import Config
 import os
 import time
 import re
-import base64
 
-links = []
 renaming_operations = {}
+posters = {}  # {user_id: poster_file_id}
+posts = {}  
 
 # Pattern 1: S01E02 or S01EP02
 pattern1 = re.compile(r'S(\d+)(?:E|EP)(\d+)')
@@ -41,6 +41,20 @@ pattern8 = re.compile(r'[([<{]?\s*HdRip\s*[)\]>}]?|\bHdRip\b', re.IGNORECASE)
 pattern9 = re.compile(r'[([<{]?\s*4kX264\s*[)\]>}]?', re.IGNORECASE)
 # Pattern 10: Find 4kx265 in brackets or parentheses
 pattern10 = re.compile(r'[([<{]?\s*4kx265\s*[)\]>}]?', re.IGNORECASE)
+
+
+
+def encode_file_link(channel_id: int, message_id: int) -> str:
+    """Encode the file link into a Base64 string."""
+    data = f"{channel_id}:{message_id}"
+    return base64.urlsafe_b64encode(data.encode()).decode()
+
+
+def decode_file_link(encoded_data: str) -> tuple:
+    """Decode the Base64 string back into channel_id and message_id."""
+    data = base64.urlsafe_b64decode(encoded_data.encode()).decode()
+    return tuple(map(int, data.split(":")))
+
 
 def extract_quality(filename):
     # Try Quality Patterns
@@ -132,11 +146,6 @@ def extract_episode_number(filename):
     # Return None if no pattern matches
     return None
 
-def generate_file_link(file_id: str):
-    encoded = base64.b64encode(f"get-{file_id}".encode()).decode()
-    return f"https://telegram.me/Rghkklljhhh_bot?start={encoded}"
-
-
 # Example Usage:
 filename = "Naruto Shippuden S01 - EP07 - 1080p [Dual Audio] @Madflix_Bots.mkv"
 episode_number = extract_episode_number(filename)
@@ -210,19 +219,29 @@ async def auto_rename_files(client, message):
         new_file_name = f"{format_template}{file_extension}"
         file_path = f"downloads/{new_file_name}"
         file = message
-        anime_name = "I'll Become a Villainess Who Goes Down in History"
-        season = "01"
-        episode = "08"
-        qualities = ["480p", "720p", "1080p"]
-        target_channel = -1002245327685  # Replace with your target channel ID
-        file_store_channel = -1002234974607  # Replace with your file store channel ID
 
-    # Step 1: Generate Initial Poster
+        download_msg = await message.reply_text(text="Trying To Download.....")
+        try:
+            path = await client.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("Download Started....", download_msg, time.time()))
+        except Exception as e:
+            # Mark the file as ignored
+            del renaming_operations[file_id]
+            return await download_msg.edit(e)     
+
+        duration = 0
+        try:
+            metadata = extractMetadata(createParser(file_path))
+            if metadata.has("duration"):
+                duration = metadata.get('duration').seconds
+        except Exception as e:
+            print(f"Error getting duration: {e}")
+
+        upload_msg = await download_msg.edit("Trying To Uploading.....")
         ph_path = None
         c_caption = await madflixbotz.get_caption(message.chat.id)
         c_thumb = await madflixbotz.get_thumbnail(message.chat.id)
 
-        caption1 = c_caption.format(filename=new_file_name, filesize=humanbytes(message.document.file_size), duration=convert(duration)) if c_caption else f"**{new_file_name}**"
+        caption = c_caption.format(filename=new_file_name, filesize=humanbytes(message.document.file_size), duration=convert(duration)) if c_caption else f"**{new_file_name}**"
 
         if c_thumb:
             ph_path = await client.download_media(c_thumb)
@@ -235,41 +254,54 @@ async def auto_rename_files(client, message):
             img = Image.open(ph_path)
             img.resize((320, 320))
             img.save(ph_path, "JPEG")    
-        caption = (
-            f"Anime: {anime_name}\n"
-            f"Season: {season}\n"
-            f"Episode: {episode}\n"
-            "Quality: "
-        )
-        post = await client.send_photo(
-            target_channel,
-            ph_path,
-            caption=caption,
-        )
-       for quality in qualities:
-            # Step 2: Show progress for downloading
-            await post.edit_caption(caption + f"\n\nDownloading {quality}...")
-            file = await message.download(file_name=f"{quality}.mp4")
-
-            
-
-        
-            await post.edit_caption(caption + f"\n\nUploading {quality}...")
-            uploaded_message = await client.send_document(file_store_channel, file)
-            file_link = generate_file_link(uploaded_message.id)
-            links.append((quality, file_link))
-
-        # Step 5: Update Poster with Link
-            buttons = [
-                InlineKeyboardButton(text=q, url=link) for q, link in links
-            ]
-            await post.edit_caption(
-                caption + "+".join([q for q, _ in links]),
-                reply_markup=InlineKeyboardMarkup([buttons]),
-           )
         
 
-        
+        try:
+            type = media_type  # Use 'media_type' variable instead
+            if type == "document":
+                await client.send_document(
+                    message.chat.id,
+                    document=file_path,
+                    thumb=ph_path,
+                    caption=caption,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+            elif type == "video":
+                await client.send_video(
+                    message.chat.id,
+                    video=file_path,
+                    caption=caption,
+                    thumb=ph_path,
+                    duration=duration,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+            elif type == "audio":
+                await client.send_audio(
+                    message.chat.id,
+                    audio=file_path,
+                    caption=caption,
+                    thumb=ph_path,
+                    duration=duration,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+        except Exception as e:
+            os.remove(file_path)
+            if ph_path:
+                os.remove(ph_path)
+            # Mark the file as ignored
+            return await upload_msg.edit(f"Error: {e}")
+
+        await download_msg.delete() 
+        os.remove(file_path)
+        if ph_path:
+            os.remove(ph_path)
+
+# Remove the entry from renaming_operations after successful renaming
+        del renaming_operations[file_id]
+
 
 
 
