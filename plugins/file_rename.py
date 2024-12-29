@@ -297,7 +297,7 @@ async def auto_rename_files(client, message):
         if len(new_buttons) == 3:
             await message.reply_text("All qualities uploaded successfully ✅")
         else:
-            await message.reply_text(f"Uploaded {quality} successfully ✅")
+            await message.reply_text(f"Uploaded {extracted_qualities} successfully ✅")
 
 
 
