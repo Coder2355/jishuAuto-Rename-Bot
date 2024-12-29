@@ -11,6 +11,7 @@ from config import Config
 import os
 import time
 import re
+import base64
 
 FILE_STORE_CHANNEL = -1002234974607  # Replace with your file store channel ID
 TARGET_CHANNEL = -1002245327685
