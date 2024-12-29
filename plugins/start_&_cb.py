@@ -3,7 +3,14 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ForceReply, CallbackQuery, Message, InputMediaPhoto
 
 from helper.database import madflixbotz
-from config import Config, Txt  
+from config import Config, Txt 
+
+
+
+def decode_file_link(encoded_data: str) -> tuple:
+    """Decode the Base64 string back into channel_id and message_id."""
+    data = base64.urlsafe_b64decode(encoded_data.encode()).decode()
+    return tuple(map(int, data.split(":")))
 
 @Client.on_message(filters.private & filters.command("start"))
 async def start(client: Client, message: Message):
