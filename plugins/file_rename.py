@@ -12,6 +12,9 @@ import os
 import time
 import re
 
+FILE_STORE_CHANNEL = -1002234974607  # Replace with your file store channel ID
+TARGET_CHANNEL = -1002245327685
+
 renaming_operations = {}
 posters = {}  # {user_id: poster_file_id}
 posts = {}  
@@ -48,6 +51,12 @@ def encode_file_link(channel_id: int, message_id: int) -> str:
     """Encode the file link into a Base64 string."""
     data = f"{channel_id}:{message_id}"
     return base64.urlsafe_b64encode(data.encode()).decode()
+
+@Client.on_message(filters.private & filters.command(poster))
+async def set_poster(client: Client, message: Message):
+    """Set poster for the anime."""
+    posters[message.from_user.id] = message.photo.file_id
+    await message.reply_text("Poster added successfully ✅")
 
 
 def decode_file_link(encoded_data: str) -> tuple:
@@ -256,43 +265,52 @@ async def auto_rename_files(client, message):
             img.save(ph_path, "JPEG")    
         
 
-        try:
-            type = media_type  # Use 'media_type' variable instead
-            if type == "document":
-                await client.send_document(
-                    message.chat.id,
+        forwarded_msg = await client.send_document(
+                    FILE_STORE_CHANNEL,
                     document=file_path,
                     thumb=ph_path,
                     caption=caption,
                     progress=progress_for_pyrogram,
                     progress_args=("Upload Started.....", upload_msg, time.time())
                 )
-            elif type == "video":
-                await client.send_video(
-                    message.chat.id,
-                    video=file_path,
-                    caption=caption,
-                    thumb=ph_path,
-                    duration=duration,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
-            elif type == "audio":
-                await client.send_audio(
-                    message.chat.id,
-                    audio=file_path,
-                    caption=caption,
-                    thumb=ph_path,
-                    duration=duration,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
-        except Exception as e:
-            os.remove(file_path)
-            if ph_path:
-                os.remove(ph_path)
-            # Mark the file as ignored
-            return await upload_msg.edit(f"Error: {e}")
+            
+        encoded_link = encode_file_link(forwarded_msg.chat.id, forwarded_msg.id)
+        bot_username = (await client.get_me()).username
+        download_link = f"https://t.me/{bot_username}?start={encoded_link}"
+
+        anime_name="Anime_warrior_tamil"
+        # Create or update the post in the target channel
+        post_key = (anime_name, episode_number)
+        quality_button = InlineKeyboardButton(extracted_qualities, url=download_link)
+
+        if post_key not in posts:
+        # Create a new post
+            poster_id = posters[message.from_user.id]
+            caption = f"**{anime_name}**\nEpisode: {episode_number}\n\nSelect quality below:"
+            buttons = [[quality_button]]
+
+            target_message = await client.send_photo(
+                TARGET_CHANNEL,
+                photo=poster_id,
+                caption=caption,
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+            posts[post_key] = target_message.id
+        else:
+        # Update the existing post
+            target_message = await client.get_messages(TARGET_CHANNEL, posts[post_key])
+            existing_buttons = target_message.reply_markup.inline_keyboard
+            new_buttons = existing_buttons + [[quality_button]]
+
+            await target_message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_buttons))
+
+    # Notify the user
+        if len(new_buttons) == 3:
+            await message.reply_text("All qualities uploaded successfully ✅")
+        else:
+            await message.reply_text(f"Uploaded {quality} successfully ✅")
+
+
 
         await download_msg.delete() 
         os.remove(file_path)
