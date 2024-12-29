@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
-from pyrogram.types import InputMediaDocument, Message 
+from pyrogram.types import InputMediaDocument, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from PIL import Image
 from datetime import datetime
 from hachoir.metadata import extractMetadata
