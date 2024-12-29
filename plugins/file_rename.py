@@ -255,13 +255,12 @@ async def auto_rename_files(client, message):
         
 
         forwarded_msg = await client.send_document(
-                    FILE_STORE_CHANNEL,
-                    document=file_path,
-                    thumb=ph_path,
-                    caption=caption,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
+                            chat_id=FILE_STORE_CHANNEL,
+                            document=file_path,
+                            caption=caption,
+                            progress=progress_for_pyrogram,
+                            progress_args=("Upload Started.....", upload_msg, time.time())
+                        )
             
         encoded_link = encode_file_link(forwarded_msg.chat.id, forwarded_msg.id)
         bot_username = (await client.get_me()).username
