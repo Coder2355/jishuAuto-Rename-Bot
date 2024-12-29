@@ -52,7 +52,7 @@ def encode_file_link(channel_id: int, message_id: int) -> str:
     data = f"{channel_id}:{message_id}"
     return base64.urlsafe_b64encode(data.encode()).decode()
 
-@Client.on_message(filters.private & filters.command(poster))
+@Client.on_message(filters.private & filters.photo)
 async def set_poster(client: Client, message: Message):
     """Set poster for the anime."""
     posters[message.from_user.id] = message.photo.file_id
