@@ -13,7 +13,7 @@ import time
 import re
 import base64
 
-FILE_STORE_CHANNEL = -1002234974607  # Replace with your file store channel ID
+FILE_STORE_CHANNEL = -1002134913785  # Replace with your file store channel ID
 TARGET_CHANNEL = -1002245327685
 
 renaming_operations = {}
