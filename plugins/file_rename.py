@@ -15,6 +15,7 @@ import base64
 
 FILE_STORE_CHANNEL = -1002234974607  # Replace with your file store channel ID
 TARGET_CHANNEL = -1002245327685
+SOURCE_CHANNEL = -1002183423252
 
 renaming_operations = {}
 posters = {}  # {user_id: poster_file_id}
@@ -52,12 +53,6 @@ def encode_file_link(channel_id: int, message_id: int) -> str:
     """Encode the file link into a Base64 string."""
     data = f"{channel_id}:{message_id}"
     return base64.urlsafe_b64encode(data.encode()).decode()
-
-@Client.on_message(filters.private & filters.photo)
-async def set_poster(client: Client, message: Message):
-    """Set poster for the anime."""
-    posters[message.from_user.id] = message.photo.file_id
-    await message.reply_text("Poster added successfully ✅")
 
 
 def decode_file_link(encoded_data: str) -> tuple:
@@ -159,9 +154,11 @@ def extract_episode_number(filename):
 # Example Usage:
 filename = "Naruto Shippuden S01 - EP07 - 1080p [Dual Audio] @Madflix_Bots.mkv"
 episode_number = extract_episode_number(filename)
+quality = extract_quality(filename)
 print(f"Extracted Episode Number: {episode_number}")
 
 # Inside the handler for file uploads
+
 @Client.on_message(filters.private & (filters.document | filters.video | filters.audio))
 async def auto_rename_files(client, message):
     user_id = message.from_user.id
@@ -253,53 +250,56 @@ async def auto_rename_files(client, message):
 
         caption = c_caption.format(filename=new_file_name, filesize=humanbytes(message.document.file_size), duration=convert(duration)) if c_caption else f"**{new_file_name}**"
 
+        if c_thumb:
+            ph_path = await client.download_media(c_thumb)
+            print(f"Thumbnail downloaded successfully. Path: {ph_path}")
+        elif media_type == "video" and message.video.thumbs:
+            ph_path = await client.download_media(message.video.thumbs[0].file_id)
+
+        if ph_path:
+            Image.open(ph_path).convert("RGB").save(ph_path)
+            img = Image.open(ph_path)
+            img.resize((320, 320))
+            img.save(ph_path, "JPEG")    
         
 
-        forwarded_msg = await client.send_document(
-                            chat_id=FILE_STORE_CHANNEL,
-                            document=file_path,
-                            caption=caption,
-                            progress=progress_for_pyrogram,
-                            progress_args=("Upload Started.....", upload_msg, time.time())
-                        )
-            
-        encoded_link = encode_file_link(forwarded_msg.chat.id, forwarded_msg.id)
-        bot_username = (await client.get_me()).username
-        download_link = f"https://t.me/{bot_username}?start={encoded_link}"
-
-        anime_name="Anime_warrior_tamil"
-        # Create or update the post in the target channel
-        post_key = (anime_name, episode_number)
-        quality_button = InlineKeyboardButton(extracted_qualities, url=download_link)
-
-        if post_key not in posts:
-        # Create a new post
-            poster_id = posters[message.from_user.id]
-            caption = f"**{anime_name}**\nEpisode: {episode_number}\n\nSelect quality below:"
-            buttons = [[quality_button]]
-
-            target_message = await client.send_photo(
-                TARGET_CHANNEL,
-                photo=poster_id,
-                caption=caption,
-                reply_markup=InlineKeyboardMarkup(buttons),
-            )
-            posts[post_key] = target_message.id
-        else:
-        # Update the existing post
-            target_message = await client.get_messages(TARGET_CHANNEL, posts[post_key])
-            existing_buttons = target_message.reply_markup.inline_keyboard
-            new_buttons = existing_buttons + [[quality_button]]
-
-            await target_message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_buttons))
-
-    # Notify the user
-        if len(new_buttons) == 3:
-            await message.reply_text("All qualities uploaded successfully ✅")
-        else:
-            await message.reply_text(f"Uploaded {extracted_qualities} successfully ✅")
-
-
+        try:
+            type = media_type  # Use 'media_type' variable instead
+            if type == "document":
+                await client.send_document(
+                    message.chat.id,
+                    document=file_path,
+                    thumb=ph_path,
+                    caption=caption,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+            elif type == "video":
+                await client.send_video(
+                    message.chat.id,
+                    video=file_path,
+                    caption=caption,
+                    thumb=ph_path,
+                    duration=duration,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+            elif type == "audio":
+                await client.send_audio(
+                    message.chat.id,
+                    audio=file_path,
+                    caption=caption,
+                    thumb=ph_path,
+                    duration=duration,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+        except Exception as e:
+            os.remove(file_path)
+            if ph_path:
+                os.remove(ph_path)
+            # Mark the file as ignored
+            return await upload_msg.edit(f"Error: {e}")
 
         await download_msg.delete() 
         os.remove(file_path)
@@ -311,8 +311,62 @@ async def auto_rename_files(client, message):
 
 
 
+@Client.on_message(filters.private & filters.command("poster"))
+async def set_poster(client: Client, message: Message):
+    """Set a poster for the anime by replying to a photo."""
+    if not message.reply_to_message or not message.reply_to_message.photo:
+        await message.reply_text("Please reply to a photo using this command to set it as a poster.")
+        return
 
-# Jishu Developer 
-# Don't Remove Credit 🥺
-# Telegram Channel @Madflix_Bots
-# Developer @JishuDeveloper
+    # Store the photo's file ID
+    posters[message.from_user.id] = message.reply_to_message.photo.file_id
+    await message.reply_text("Poster added successfully ✅")
+
+
+@app.on_message(filters.channel & filters.chat(SOURCE_CHANNEL) & (filters.video | filters.document))
+async def handle_file(client: Client, message: Message):
+    """Handle video or document files."""
+    
+
+    await message.reply_text("Processing your file...")
+
+    # Forward the file to the file store channel
+    forwarded_msg = await message.forward(FILE_STORE_CHANNEL)
+    encoded_link = encode_file_link(forwarded_msg.chat.id, forwarded_msg.id)
+    bot_username = (await client.get_me()).username
+    download_link = f"https://t.me/{bot_username}?start={encoded_link}"
+    
+    anime_name = "Anime_Warrior_Tamil"
+
+    # Create or update the post in the target channel
+    post_key = (anime_name, episode_number)
+    quality_button = InlineKeyboardButton(quality, url=download_link)
+
+    if post_key not in posts:
+        # Create a new post
+        poster_id = posters[message.from_user.id]
+        caption = f"**{anime_name}**\nEpisode: {episode_number}\n\nSelect quality below:"
+        buttons = [[quality_button]]
+
+        target_message = await client.send_photo(
+            TARGET_CHANNEL,
+            photo=poster_id,
+            caption=caption,
+            reply_markup=InlineKeyboardMarkup(buttons),
+        )
+        posts[post_key] = target_message.id
+    else:
+        # Update the existing post
+        target_message = await client.get_messages(TARGET_CHANNEL, posts[post_key])
+        existing_buttons = target_message.reply_markup.inline_keyboard
+        new_buttons = existing_buttons + [[quality_button]]
+
+        await target_message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_buttons))
+
+    # Notify the user
+    if len(new_buttons) == 3:
+        await message.reply_text("All qualities uploaded successfully ✅")
+    else:
+        await message.reply_text(f"Uploaded {quality} successfully ✅")
+
+
