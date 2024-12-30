@@ -61,6 +61,13 @@ def decode_file_link(encoded_data: str) -> tuple:
     return tuple(map(int, data.split(":")))
 
 
+@Client.on_message(filters.private & filters.photo)
+async def set_poster(client: Client, message: Message):
+    """Set poster for the anime."""
+    posters[message.from_user.id] = message.photo.file_id
+    await message.reply_text("Poster added successfully ✅")
+
+
 def extract_quality(filename):
     # Try Quality Patterns
     match5 = re.search(pattern5, filename)
@@ -309,15 +316,6 @@ async def auto_rename_files(client, message):
 # Remove the entry from renaming_operations after successful renaming
         del renaming_operations[file_id]
 
-
-
-@Client.on_message(filters.private & filters.command("poster"))
-async def set_poster(client: Client, message: Message):
-    
-
-    # Store the photo's file ID
-    posters[message.from_user.id] = message.reply_to_message.photo.file_id
-    await message.reply_text("Poster added successfully ✅")
 
 
 @Client.on_message(filters.channel & filters.chat(SOURCE_CHANNEL) & (filters.video | filters.document))
