@@ -323,7 +323,7 @@ async def set_poster(client: Client, message: Message):
     await message.reply_text("Poster added successfully ✅")
 
 
-@app.on_message(filters.channel & filters.chat(SOURCE_CHANNEL) & (filters.video | filters.document))
+@Client.on_message(filters.channel & filters.chat(SOURCE_CHANNEL) & (filters.video | filters.document))
 async def handle_file(client: Client, message: Message):
     """Handle video or document files."""
     
