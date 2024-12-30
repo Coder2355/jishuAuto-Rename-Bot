@@ -313,10 +313,7 @@ async def auto_rename_files(client, message):
 
 @Client.on_message(filters.private & filters.command("poster"))
 async def set_poster(client: Client, message: Message):
-    """Set a poster for the anime by replying to a photo."""
-    if not message.reply_to_message or not message.reply_to_message.photo:
-        await message.reply_text("Please reply to a photo using this command to set it as a poster.")
-        return
+    
 
     # Store the photo's file ID
     posters[message.from_user.id] = message.reply_to_message.photo.file_id
