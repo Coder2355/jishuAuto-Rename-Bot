@@ -294,10 +294,10 @@ async def auto_rename_files(client, message):
             await target_message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_buttons))
 
     # Notify the user
-        if len(new_buttons) == 3:
-            await message.reply_text("All qualities uploaded successfully âœ…")
-        else:
-            await message.reply_text(f"Uploaded {extracted_qualities} successfully âœ…")
+            if len(new_buttons) == 3:
+                await message.reply_text("All qualities uploaded successfully âœ…")
+            else:
+                await message.reply_text(f"Uploaded {extracted_qualities} successfully âœ…")
 
 
 
