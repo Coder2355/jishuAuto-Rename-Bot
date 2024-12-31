@@ -20,10 +20,6 @@ renaming_operations = {}
 posters = {}  # {user_id: poster_file_id}
 posts = {}  
 
-db_channel = await self.get_chat(FILE_STORE_CHANNEL)
-self.db_channel = db_channel
-test = await self.send_message(chat_id = db_channel.id, text = "Hey 🖐")
-await test.delete()
 
 # Pattern 1: S01E02 or S01EP02
 pattern1 = re.compile(r'S(\d+)(?:E|EP)(\d+)')
