@@ -11,6 +11,9 @@ pyrogram.utils.MIN_CHAT_ID = -999999999999
 pyrogram.utils.MIN_CHANNEL_ID = -1009999999999
 
 
+FILE_STORE_CHANNEL = -1002134913785 
+
+
 class Bot(Client):
 
     def __init__(self):
