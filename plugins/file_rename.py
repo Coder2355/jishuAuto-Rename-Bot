@@ -282,7 +282,12 @@ async def auto_rename_files(client, message):
         # Create a new post
             poster_id = posters[message.from_user.id]
             caption = f"**{anime_name}**\nEpisode: {episode_number}\n\n**Available Qualities:**\n- {extracted_qualities}"
-            buttons = [[quality_button]]
+            qualities = ["480p", "720p", "1080p"]
+            buttons = [
+                [
+                    InlineKeyboardButton(f"{quality}.mkv", url=link) for quality in qualities
+                ]
+            ]
 
             target_message = await client.send_photo(
                 TARGET_CHANNEL,
@@ -299,9 +304,9 @@ async def auto_rename_files(client, message):
 
             existing_caption = target_message.caption
             if "Available Qualities:" in existing_caption:
-                updated_caption = existing_caption + f"\n- {extracted_qualities}"
+                updated_caption = existing_caption + f"{extracted_qualities}|"
             else:
-                updated_caption = f"{existing_caption}\n\n**Available Qualities:**\n- {extracted_qualities}"
+                updated_caption = f"{existing_caption}\n\n**Available Qualities:**{extracted_qualities}|"
 
             await target_message.edit_caption(
                 caption=updated_caption,
