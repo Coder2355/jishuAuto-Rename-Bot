@@ -20,6 +20,11 @@ renaming_operations = {}
 posters = {}  # {user_id: poster_file_id}
 posts = {}  
 
+db_channel = await self.get_chat(FILE_STORE_CHANNEL)
+self.db_channel = db_channel
+test = await self.send_message(chat_id = db_channel.id, text = "Hey 🖐")
+await test.delete()
+
 # Pattern 1: S01E02 or S01EP02
 pattern1 = re.compile(r'S(\d+)(?:E|EP)(\d+)')
 # Pattern 2: S01 E02 or S01 EP02 or S01 - E01 or S01 - EP02
@@ -48,11 +53,12 @@ pattern10 = re.compile(r'[([<{]?\s*4kx265\s*[)\]>}]?', re.IGNORECASE)
 
 
 
-def encode_file_link(channel_id: int, message_id: int) -> str:
-    """Encode the file link into a Base64 string."""
-    data = f"{channel_id}:{message_id}"
-    return base64.urlsafe_b64encode(data.encode()).decode()
-
+async def encode(string):
+    string_bytes = string.encode("ascii")
+    base64_bytes = base64.urlsafe_b64encode(string_bytes)
+    base64_string = (base64_bytes.decode("ascii")).strip("=")
+    return base64_string
+    
 @Client.on_message(filters.private & filters.photo)
 async def set_poster(client: Client, message: Message):
     """Set poster for the anime."""
@@ -60,11 +66,12 @@ async def set_poster(client: Client, message: Message):
     await message.reply_text("Poster added successfully âœ…")
 
 
-def decode_file_link(encoded_data: str) -> tuple:
-    """Decode the Base64 string back into channel_id and message_id."""
-    data = base64.urlsafe_b64decode(encoded_data.encode()).decode()
-    return tuple(map(int, data.split(":")))
-
+async def decode(base64_string):
+    base64_string = base64_string.strip("=") # links generated before this commit will be having = sign, hence striping them to handle padding errors.
+    base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
+    string_bytes = base64.urlsafe_b64decode(base64_bytes) 
+    string = string_bytes.decode("ascii")
+    return string
 
 def extract_quality(filename):
     # Try Quality Patterns
@@ -263,14 +270,17 @@ async def auto_rename_files(client, message):
                             progress_args=("Upload Started.....", upload_msg, time.time())
                         )
             
-        encoded_link = encode_file_link(forwarded_msg.chat.id, forwarded_msg.id)
-        bot_username = (await client.get_me()).username
-        download_link = f"https://t.me/{bot_username}?start={encoded_link}"
+        converted_id = forwarded_msg.id * abs(client.db_channel.id)
+        string = f"get-{converted_id}"
+        base64_string = await encode(string)
+        link = f"https://t.me/{client.username}?start={base64_string}"
 
+        
+        
         anime_name="Anime_warrior_tamil"
         # Create or update the post in the target channel
         post_key = (anime_name, episode_number)
-        quality_button = InlineKeyboardButton(extracted_qualities, url=download_link)
+        quality_button = InlineKeyboardButton(extracted_qualities, url=link)
 
         if post_key not in posts:
         # Create a new post
