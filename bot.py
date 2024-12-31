@@ -29,7 +29,12 @@ class Bot(Client):
         me = await self.get_me()
         self.mention = me.mention
         self.username = me.username  
-        self.uptime = Config.BOT_UPTIME     
+        self.uptime = Config.BOT_UPTIME 
+        db_channel = await self.get_chat(FILE_STORE_CHANNEL)
+        self.db_channel = db_channel
+        test = await self.send_message(chat_id = db_channel.id, text = "Hey 🖐")
+        await test.delete()
+
         if Config.WEBHOOK:
             app = web.AppRunner(await web_server())
             await app.setup()       
