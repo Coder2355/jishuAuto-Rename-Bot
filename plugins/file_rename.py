@@ -305,7 +305,7 @@ async def auto_rename_files(client, message):
 
             await target_message.edit_caption(
                 caption=updated_caption,
-                reply_markup=InlineKeyboardMarkup(new_buttons)
+                reply_markup=InlineKeyboardMarkup(new_buttons),
             )
             
     # Notify the user
@@ -326,66 +326,3 @@ async def auto_rename_files(client, message):
 
 
 
-forwarded_msg = await client.send_document(
-    chat_id=FILE_STORE_CHANNEL,
-    document=file_path,
-    caption=caption,
-    progress=progress_for_pyrogram,
-    progress_args=("Upload Started.....", upload_msg, time.time())
-)
-
-converted_id = forwarded_msg.id * abs(client.db_channel.id)
-string = f"get-{converted_id}"
-base64_string = await encode(string)
-link = f"https://t.me/{client.username}?start={base64_string}"
-
-anime_name = "Anime_warrior_tamil"
-
-# Create or update the post in the target channel
-post_key = (anime_name, episode_number)
-quality_button = InlineKeyboardButton(extracted_qualities, url=link)
-
-if post_key not in posts:
-    # Create a new post
-    poster_id = posters[message.from_user.id]
-    caption = f"**{anime_name}**\nEpisode: {episode_number}\n\n**Available Qualities:**\n- {extracted_qualities}"
-    buttons = [[quality_button]]
-
-    target_message = await client.send_photo(
-        TARGET_CHANNEL,
-        photo=poster_id,
-        caption=caption,
-        reply_markup=InlineKeyboardMarkup(buttons),
-    )
-    posts[post_key] = target_message.id
-else:
-    # Update the existing post
-    target_message = await client.get_messages(TARGET_CHANNEL, posts[post_key])
-    existing_buttons = target_message.reply_markup.inline_keyboard
-    new_buttons = existing_buttons + [[quality_button]]
-
-    # Extract existing qualities from the caption or append the new quality
-    existing_caption = target_message.caption
-    if "Available Qualities:" in existing_caption:
-        updated_caption = existing_caption + f"\n- {extracted_qualities}"
-    else:
-        updated_caption = f"{existing_caption}\n\n**Available Qualities:**\n- {extracted_qualities}"
-
-    await target_message.edit_caption(
-        caption=updated_caption,
-        reply_markup=InlineKeyboardMarkup(new_buttons),
-    )
-
-# Notify the user
-if len(new_buttons) == 3:
-    await message.reply_text("All qualities uploaded successfully ✅")
-else:
-    await message.reply_text(f"Uploaded {extracted_qualities} successfully ✅")
-
-
-
-
-# Jishu Developer 
-# Don't Remove Credit ðŸ¥º
-# Telegram Channel @Madflix_Bots
-# Developer @JishuDeveloper
