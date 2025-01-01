@@ -307,7 +307,7 @@ async def auto_rename_files(client, message):
         # Update the existing post
             target_message = await client.get_messages(TARGET_CHANNEL, posts[post_key])
             existing_buttons = target_message.reply_markup.inline_keyboard
-            new_buttons = existing_buttons + [[quality_button]]
+            new_buttons = existing_buttons + ([quality_button],)
 
             existing_caption = target_message.caption
             if "Available Qualities:" in existing_caption:
