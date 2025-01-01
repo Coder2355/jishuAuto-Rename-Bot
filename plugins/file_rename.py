@@ -55,11 +55,18 @@ async def encode(string):
     base64_string = (base64_bytes.decode("ascii")).strip("=")
     return base64_string
     
-@Client.on_message(filters.private & filters.photo)
-async def set_poster(client: Client, message: Message):
-    """Set poster for the anime."""
-    posters[message.from_user.id] = message.photo.file_id
-    await message.reply_text("Poster added successfully âœ…")
+
+
+@Client.on_message(filters.private & filters.command("set_thumb1") & filters.reply)
+async def set_thumb_command(client, message):
+    if not message.reply_to_message or not message.reply_to_message.photo:
+        await message.reply_text("Please reply to a photo to set it as a thumbnail.")
+        return
+
+    posters[message.from_user.id] = message.reply_to_message.photo.file_id
+    await message.reply_text("Poster added successfully ✅")
+
+
 
 
 async def decode(base64_string):
