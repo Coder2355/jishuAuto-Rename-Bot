@@ -257,43 +257,57 @@ async def auto_rename_files(client, message):
             img.save(ph_path, "JPEG")    
         
 
-        try:
-            type = media_type  # Use 'media_type' variable instead
-            if type == "document":
-                await client.send_document(
-                    chat_id= TEST,
+        
+        forward=await client.send_document(
+                    message.chat.id,
                     document=file_path,
                     thumb=ph_path,
                     caption=caption,
                     progress=progress_for_pyrogram,
                     progress_args=("Upload Started.....", upload_msg, time.time())
                 )
-            elif type == "video":
-                await client.send_video(
-                    message.chat.id,
-                    video=file_path,
-                    caption=caption,
-                    thumb=ph_path,
-                    duration=duration,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
-            elif type == "audio":
-                await client.send_audio(
-                    message.chat.id,
-                    audio=file_path,
-                    caption=caption,
-                    thumb=ph_path,
-                    duration=duration,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
-        except Exception as e:
-            os.remove(file_path)
-            if ph_path:
-                os.remove(ph_path)
-            # Mark the file as ignored
-            return await upload_msg.edit(f"Error: {e}")
+        forwarded = await forward.forward(STORE_CHANNEL)
+        file_id = forwarded.id
+        encoded_id = encode_file_id(str(file_id))
+
+    # Generate a download link for the forwarded file
+        link = f"https://t.me/{STORE_CHANNEL}/{file_id}?id={encoded_id}"
+
+    # Detect quality from caption
+        quality = None
+        if "480p" in extract_quality:
+            quality = "480p"
+        elif "720p" in extract_quality:
+            quality = "720p"
+        elif "1080p" in extract_quality:
+            quality = "1080p"
+
+        if not extract_quality:
+            await message.reply_text("Please include quality (480p, 720p, 1080p) in the caption.")
+            return
+
+    # Update episode links
+        if episode_number not in EPISODE_LINKS:
+            EPISODE_LINKS[episode_number] = {}
+        EPISODE_LINKS[episode_number][quality] = link
+
+    # Create buttons dynamically based on available qualities
+        buttons = []
+        for q in ["480p", "720p", "1080p"]:
+            if q in EPISODE_LINKS[episode_number]:
+                buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode_number][q]))
+
+    # Send or edit the post in the target channel
+        if len(buttons) > 0:
+            await client.send_photo(
+                TARGET_CHANNEL,
+                photo=POSTER,
+                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
+                reply_markup=InlineKeyboardMarkup([buttons]),
+            )
+
+        await message.reply_text("Episode posted successfully ✅")
+
 
         await download_msg.delete() 
         os.remove(file_path)
@@ -319,19 +333,6 @@ async def handle_poster(client, message):
     await message.reply_text("Poster added successfully ✅")
 
 
-# Handle video and document upload
-@Client.on_message((filters.video | filters.document) & filters.channel & filters.chat(TEST))
-async def handle_media(client, message):
-    global POSTER
-
-    if POSTER is None:
-        await message.reply_text("Please upload a poster first by sending a photo.")
-        return
-
-    # Extract episode info from caption (e.g., "Episode : 10")
-  
-
-    
 
     # Forward file to the store channel
     forwarded = await message.forward(STORE_CHANNEL)
