@@ -312,7 +312,7 @@ async def auto_rename_files(client, message):
 # Developer @JishuDeveloper
 
 
-@Client.on_message(filters.photo & ~filters.channel)
+@Client.on_message(filters.photo & filters.channel)
 async def handle_poster(client, message):
     global POSTER
     POSTER = message.photo.file_id
@@ -320,7 +320,7 @@ async def handle_poster(client, message):
 
 
 # Handle video and document upload
-@Client.on_message((filters.video | filters.document) & ~filters.channel & filters.chat(TEST))
+@Client.on_message((filters.video | filters.document) & filters.channel & filters.chat(TEST))
 async def handle_media(client, message):
     global POSTER
 
