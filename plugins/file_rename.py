@@ -25,6 +25,9 @@ posters = {}  # {user_id: poster_file_id}
 posts = {}  
 
 
+def encode_file_id(file_id):
+    return base64.urlsafe_b64encode(file_id.encode()).decode()
+
 
 
 # Pattern 1: S01E02 or S01EP02
