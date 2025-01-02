@@ -15,7 +15,7 @@ import base64
 
 STORE_CHANNEL = -1002134913785  # Replace with your file store channel ID
 TARGET_CHANNEL = -1002245327685
-TEST =
+TEST = -1002183423252
 
 POSTER = None
 EPISODE_LINKS = {}
@@ -23,6 +23,8 @@ EPISODE_LINKS = {}
 renaming_operations = {}
 posters = {}  # {user_id: poster_file_id}
 posts = {}  
+
+
 
 
 # Pattern 1: S01E02 or S01EP02
@@ -40,7 +42,7 @@ patternX = re.compile(r'(\d+)')
 #QUALITY PATTERNS 
 # Pattern 5: 3-4 digits before 'p' as quality
 pattern5 = re.compile(r'\b(?:.*?(\d{3,4}[^\dp]*p).*?|.*?(\d{3,4}p))\b', re.IGNORECASE)
-# Pattern 6: Find 4k in brackets or parentheses
+# Pattern 6: Find 4k in brackets-1002183423252s
 pattern6 = re.compile(r'[([<{]?\s*4k\s*[)\]>}]?', re.IGNORECASE)
 # Pattern 7: Find 2k in brackets or parentheses
 pattern7 = re.compile(r'[([<{]?\s*2k\s*[)\]>}]?', re.IGNORECASE)
@@ -50,35 +52,6 @@ pattern8 = re.compile(r'[([<{]?\s*HdRip\s*[)\]>}]?|\bHdRip\b', re.IGNORECASE)
 pattern9 = re.compile(r'[([<{]?\s*4kX264\s*[)\]>}]?', re.IGNORECASE)
 # Pattern 10: Find 4kx265 in brackets or parentheses
 pattern10 = re.compile(r'[([<{]?\s*4kx265\s*[)\]>}]?', re.IGNORECASE)
-
-
-
-async def encode(string):
-    string_bytes = string.encode("ascii")
-    base64_bytes = base64.urlsafe_b64encode(string_bytes)
-    base64_string = (base64_bytes.decode("ascii")).strip("=")
-    return base64_string
-    
-
-
-@Client.on_message(filters.private & filters.command("set_thumb1") & filters.reply)
-async def set_thumb_command(client, message):
-    if not message.reply_to_message or not message.reply_to_message.photo:
-        await message.reply_text("Please reply to a photo to set it as a thumbnail.")
-        return
-
-    posters[message.from_user.id] = message.reply_to_message.photo.file_id
-    await message.reply_text("Poster added successfully ✅")
-
-
-
-
-async def decode(base64_string):
-    base64_string = base64_string.strip("=") # links generated before this commit will be having = sign, hence striping them to handle padding errors.
-    base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
-    string_bytes = base64.urlsafe_b64decode(base64_bytes) 
-    string = string_bytes.decode("ascii")
-    return string
 
 def extract_quality(filename):
     # Try Quality Patterns
@@ -173,6 +146,7 @@ def extract_episode_number(filename):
 # Example Usage:
 filename = "Naruto Shippuden S01 - EP07 - 1080p [Dual Audio] @Madflix_Bots.mkv"
 episode_number = extract_episode_number(filename)
+quality = extract_quality(filename)
 print(f"Extracted Episode Number: {episode_number}")
 
 # Inside the handler for file uploads
@@ -267,70 +241,56 @@ async def auto_rename_files(client, message):
 
         caption = c_caption.format(filename=new_file_name, filesize=humanbytes(message.document.file_size), duration=convert(duration)) if c_caption else f"**{new_file_name}**"
 
+        if c_thumb:
+            ph_path = await client.download_media(c_thumb)
+            print(f"Thumbnail downloaded successfully. Path: {ph_path}")
+        elif media_type == "video" and message.video.thumbs:
+            ph_path = await client.download_media(message.video.thumbs[0].file_id)
+
+        if ph_path:
+            Image.open(ph_path).convert("RGB").save(ph_path)
+            img = Image.open(ph_path)
+            img.resize((320, 320))
+            img.save(ph_path, "JPEG")    
         
 
-        forwarded_msg = await client.send_document(
-                            chat_id=FILE_STORE_CHANNEL,
-                            document=file_path,
-                            caption=caption,
-                            progress=progress_for_pyrogram,
-                            progress_args=("Upload Started.....", upload_msg, time.time())
-                        )
-            
-        converted_id = forwarded_msg.id * abs(client.db_channel.id)
-        string = f"get-{converted_id}"
-        base64_string = await encode(string)
-        link = f"https://t.me/{client.username}?start={base64_string}"
-
-        
-        
-        anime_name="Anime_warrior_tamil"
-        # Create or update the post in the target channel
-        post_key = (anime_name, episode_number)
-        quality_button = InlineKeyboardButton(extracted_qualities, url=link)
-
-        if post_key not in posts:
-        # Create a new post
-            poster_id = posters[message.from_user.id]
-            caption = f"**{anime_name}**\nEpisode: {episode_number}\n\n**Available Qualities:**\n- {extracted_qualities}"
-            qualities = ["480p", "720p", "1080p"]
-            buttons = [
-                [
-                    InlineKeyboardButton(f"{quality}.mkv", url=link) for quality in qualities
-                ]
-            ]
-
-            target_message = await client.send_photo(
-                TARGET_CHANNEL,
-                photo=poster_id,
-                caption=caption,
-                reply_markup=InlineKeyboardMarkup(buttons),
-            )
-            posts[post_key] = target_message.id
-        else:
-        # Update the existing post
-            target_message = await client.get_messages(TARGET_CHANNEL, posts[post_key])
-            existing_buttons = target_message.reply_markup.inline_keyboard
-            new_buttons = existing_buttons + ([quality_button],)
-
-            existing_caption = target_message.caption
-            if "Available Qualities:" in existing_caption:
-                updated_caption = existing_caption + f"{extracted_qualities}|"
-            else:
-                updated_caption = f"{existing_caption}\n\n**Available Qualities:**{extracted_qualities}|"
-
-            await target_message.edit_caption(
-                caption=updated_caption,
-                reply_markup=InlineKeyboardMarkup(new_buttons),
-            )
-            
-    # Notify the user
-        if len(new_buttons) == 3:
-            await message.reply_text("All qualities uploaded successfully âœ…")
-        else:
-            await message.reply_text(f"Uploaded {extracted_qualities} successfully âœ…")
-
-
+        try:
+            type = media_type  # Use 'media_type' variable instead
+            if type == "document":
+                await client.send_document(
+                    chat_id= TEST,
+                    document=file_path,
+                    thumb=ph_path,
+                    caption=caption,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+            elif type == "video":
+                await client.send_video(
+                    message.chat.id,
+                    video=file_path,
+                    caption=caption,
+                    thumb=ph_path,
+                    duration=duration,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+            elif type == "audio":
+                await client.send_audio(
+                    message.chat.id,
+                    audio=file_path,
+                    caption=caption,
+                    thumb=ph_path,
+                    duration=duration,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Upload Started.....", upload_msg, time.time())
+                )
+        except Exception as e:
+            os.remove(file_path)
+            if ph_path:
+                os.remove(ph_path)
+            # Mark the file as ignored
+            return await upload_msg.edit(f"Error: {e}")
 
         await download_msg.delete() 
         os.remove(file_path)
@@ -340,6 +300,15 @@ async def auto_rename_files(client, message):
 # Remove the entry from renaming_operations after successful renaming
         del renaming_operations[file_id]
 
+
+
+
+# Jishu Developer 
+# Don't Remove Credit 🥺
+# Telegram Channel @Madflix_Bots
+# Developer @JishuDeveloper
+
+
 @Client.on_message(filters.photo & ~filters.channel)
 async def handle_poster(client, message):
     global POSTER
@@ -348,7 +317,7 @@ async def handle_poster(client, message):
 
 
 # Handle video and document upload
-@Client.on_message((filters.video | filters.document) & ~filters.channel & filters.chat(TARGET_CHANNEL))
+@Client.on_message((filters.video | filters.document) & ~filters.channel & filters.chat(TEST))
 async def handle_media(client, message):
     global POSTER
 
@@ -371,34 +340,34 @@ async def handle_media(client, message):
 
     # Detect quality from caption
     quality = None
-    if "480p" in message.caption:
+    if "480p" in extract_quality:
         quality = "480p"
-    elif "720p" in message.caption:
+    elif "720p" in extract_quality:
         quality = "720p"
-    elif "1080p" in message.caption:
+    elif "1080p" in extract_quality:
         quality = "1080p"
 
-    if not quality:
+    if not extract_quality:
         await message.reply_text("Please include quality (480p, 720p, 1080p) in the caption.")
         return
 
     # Update episode links
-    if episode not in EPISODE_LINKS:
-        EPISODE_LINKS[episode] = {}
-    EPISODE_LINKS[episode][quality] = link
+    if episode_number not in EPISODE_LINKS:
+        EPISODE_LINKS[episode_number] = {}
+    EPISODE_LINKS[episode_number][quality] = link
 
     # Create buttons dynamically based on available qualities
     buttons = []
     for q in ["480p", "720p", "1080p"]:
-        if q in EPISODE_LINKS[episode]:
-            buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode][q]))
+        if q in EPISODE_LINKS[episode_number]:
+            buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode_number][q]))
 
     # Send or edit the post in the target channel
     if len(buttons) > 0:
         await client.send_photo(
             TARGET_CHANNEL,
             photo=POSTER,
-            caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
+            caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
             reply_markup=InlineKeyboardMarkup([buttons]),
         )
 
