@@ -13,8 +13,12 @@ import time
 import re
 import base64
 
-FILE_STORE_CHANNEL = -1002134913785  # Replace with your file store channel ID
+STORE_CHANNEL = -1002134913785  # Replace with your file store channel ID
 TARGET_CHANNEL = -1002245327685
+TEST =
+
+POSTER = None
+EPISODE_LINKS = {}
 
 renaming_operations = {}
 posters = {}  # {user_id: poster_file_id}
@@ -335,6 +339,70 @@ async def auto_rename_files(client, message):
 
 # Remove the entry from renaming_operations after successful renaming
         del renaming_operations[file_id]
+
+@Client.on_message(filters.photo & ~filters.channel)
+async def handle_poster(client, message):
+    global POSTER
+    POSTER = message.photo.file_id
+    await message.reply_text("Poster added successfully ✅")
+
+
+# Handle video and document upload
+@Client.on_message((filters.video | filters.document) & ~filters.channel & filters.chat(TARGET_CHANNEL))
+async def handle_media(client, message):
+    global POSTER
+
+    if POSTER is None:
+        await message.reply_text("Please upload a poster first by sending a photo.")
+        return
+
+    # Extract episode info from caption (e.g., "Episode : 10")
+  
+
+    
+
+    # Forward file to the store channel
+    forwarded = await message.forward(STORE_CHANNEL)
+    file_id = forwarded.id
+    encoded_id = encode_file_id(str(file_id))
+
+    # Generate a download link for the forwarded file
+    link = f"https://t.me/{STORE_CHANNEL}/{file_id}?id={encoded_id}"
+
+    # Detect quality from caption
+    quality = None
+    if "480p" in message.caption:
+        quality = "480p"
+    elif "720p" in message.caption:
+        quality = "720p"
+    elif "1080p" in message.caption:
+        quality = "1080p"
+
+    if not quality:
+        await message.reply_text("Please include quality (480p, 720p, 1080p) in the caption.")
+        return
+
+    # Update episode links
+    if episode not in EPISODE_LINKS:
+        EPISODE_LINKS[episode] = {}
+    EPISODE_LINKS[episode][quality] = link
+
+    # Create buttons dynamically based on available qualities
+    buttons = []
+    for q in ["480p", "720p", "1080p"]:
+        if q in EPISODE_LINKS[episode]:
+            buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode][q]))
+
+    # Send or edit the post in the target channel
+    if len(buttons) > 0:
+        await client.send_photo(
+            TARGET_CHANNEL,
+            photo=POSTER,
+            caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
+            reply_markup=InlineKeyboardMarkup([buttons]),
+        )
+
+    await message.reply_text("Episode posted successfully ✅")
 
 
 
