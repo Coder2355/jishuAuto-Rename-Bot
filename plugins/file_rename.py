@@ -54,6 +54,7 @@ def extract_episode_number(filename):
 
 @Client.on_message(filters.private & (filters.document | filters.video | filters.audio))
 async def auto_rename_files(client, message):
+    global POSTER
     user_id = message.from_user.id
     format_template = await madflixbotz.get_format_template(user_id)
     media_preference = await madflixbotz.get_media_preference(user_id)
@@ -138,24 +139,38 @@ async def auto_rename_files(client, message):
         file_id = forwarded.id
         encoded_id = encode_file_id(str(file_id))
         link = f"https://t.me/{STORE_CHANNEL}/{file_id}?id={encoded_id}"
-
+        quality = None
+        if "480p" in file_quality:
+            quality = "480p"
+        elif "720p" in file_quality:
+            quality = "720p"
+        elif "1080p" in file_quality:
+            quality = "1080p"
+ 
+        if not quality:
+            await message.reply_text("Please include quality (480p, 720p, 1080p) in the caption.")
+            return
         # Create and send episode links
         if episode_number not in EPISODE_LINKS:
             EPISODE_LINKS[episode_number] = {}
-        EPISODE_LINKS[episode_number][file_quality] = link
+        EPISODE_LINKS[episode_number][quality] = link
 
-        buttons = [
-            InlineKeyboardButton(quality, url=link)
-            for quality, link in EPISODE_LINKS[episode_number].items()
-        ]
+        buttons = []
+        for q in ["480p", "720p", "1080p"]:
+            if q in EPISODE_LINKS[episode_number]:
+                buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode_number][q]))
 
-        if POSTER:
+
+        if len(buttons) > 0:
             await client.send_photo(
                 TARGET_CHANNEL,
                 photo=POSTER,
-                caption=f"Anime: Your Anime\nSeason: 1\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}",
-                reply_markup=InlineKeyboardMarkup([buttons])
-            )
+                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
+                reply_markup=InlineKeyboardMarkup([buttons]),
+           )
+
+        await message.reply_text("Episode posted successfully ✅")
+
 
         await message.reply_text("File renamed and uploaded successfully!")
 
@@ -168,7 +183,7 @@ async def auto_rename_files(client, message):
             os.remove(file_path)
 
 
-@Client.on_message(filters.photo & filters.channel)
+@Client.on_message(filters.photo & filters.private)
 async def handle_poster(client, message):
     global POSTER
     POSTER = message.photo.file_id
