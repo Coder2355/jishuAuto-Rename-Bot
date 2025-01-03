@@ -271,6 +271,8 @@ async def auto_rename_files(client, message):
         forwarded = await sent_message.forward(STORE_CHANNEL)
         file_id = forwarded.id
         encoded_id = encode_file_id(str(file_id))
+        file_quality=extract_quality(filename)
+        episode_number=extract_episode_number(filename)
         link = f"https://t.me/{STORE_CHANNEL}/{file_id}?id={encoded_id}"
         quality = None
         if "480p" in file_quality:
