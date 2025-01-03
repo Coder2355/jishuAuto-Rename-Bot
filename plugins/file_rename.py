@@ -307,10 +307,7 @@ async def auto_rename_files(client, message):
 
         await message.reply_text("File renamed and uploaded successfully!")
 
-    except Exception as e:
-        await message.reply_text(f"Error: {e}")
-    finally:
-        # Clean up
+    
         del renaming_operations[file_id]
         if os.path.exists(file_path):
             os.remove(file_path)
