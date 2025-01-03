@@ -165,7 +165,7 @@ async def auto_rename_files(client, message):
             await client.send_photo(
                 TARGET_CHANNEL,
                 photo=POSTER,
-                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
+                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}\nLanguage: Tamil",
                 reply_markup=InlineKeyboardMarkup([buttons]),
            )
 
