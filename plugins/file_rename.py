@@ -342,11 +342,11 @@ async def auto_rename_files(client, message):
 
 
 
-        if len(EPISODE_LINKS[episode]) == 3:
+        if len(EPISODE_LINKS[episode_number]) == 3:
         # Delete episode details from both dictionaries
-            del EPISODE_LINKS[episode]
-            del EPISODE_MESSAGES[episode]
-            await message.reply_text(f"All qualities uploaded for Episode {episode}. Data cleared from memory ✅")
+            del EPISODE_LINKS[episode_number]
+            del EPISODE_MESSAGES[episode_number]
+            await message.reply_text(f"All qualities uploaded for Episode {episode_number}. Data cleared from memory ✅")
         await download_msg.delete()
         del renaming_operations[file_id]
         if os.path.exists(file_path):
