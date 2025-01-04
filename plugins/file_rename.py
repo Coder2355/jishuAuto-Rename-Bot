@@ -16,7 +16,7 @@ import re
 import base64
 
 # Constants
-STORE_CHANNEL = -1002134913785  # Replace with your store channel ID
+FILE_STORE_CHANNEL = -1002134913785  # Replace with your store channel ID
 TARGET_CHANNEL = -1002245327685
 POSTER = None
 EPISODE_LINKS = {}
@@ -24,12 +24,25 @@ EPISODE_LINKS = {}
 renaming_operations = {}  # Track renaming operations
 
 
-# Utility function
-def encode_file_id(file_id):
-    return base64.urlsafe_b64encode(file_id.encode()).decode()
+async def encode(string):
+    string_bytes = string.encode("ascii")
+    base64_bytes = base64.urlsafe_b64encode(string_bytes)
+    base64_string = (base64_bytes.decode("ascii")).strip("=")
+    return base64_string
+    
 
 
-        
+
+
+async def decode(base64_string):
+    base64_string = base64_string.strip("=") # links generated before this commit will be having = sign, hence striping them to handle padding errors.
+    base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
+    string_bytes = base64.urlsafe_b64decode(base64_bytes) 
+    string = string_bytes.decode("ascii")
+    return string
+
+
+      
 
 # Pattern 1: S01E02 or S01EP02
 pattern1 = re.compile(r'S(\d+)(?:E|EP)(\d+)')
@@ -260,7 +273,7 @@ async def auto_rename_files(client, message):
 
         
         sent_message=await client.send_document(
-                         message.chat.id,
+                         chat_id=FILE_STORE_CHANNEL,
                          document=file_path,
                          thumb=ph_path,
                          caption=caption,
@@ -269,12 +282,10 @@ async def auto_rename_files(client, message):
                      )
             
         
-        forwarded = await message.forward(STORE_CHANNEL)
-        file_id = forwarded.id
-        encoded_id = encode_file_id(str(file_id))
-
-        # Generate a download link for the forwarded file
-        link = f"https://t.me/{STORE_CHANNEL}/{file_id}?id={encoded_id}"
+        converted_id = sent_message.id * abs(client.db_channel.id)
+        string = f"get-{converted_id}"
+        base64_string = await encode(string)
+        link = f"https://t.me/{client.username}?start={base64_string}
 
     # Detect quality from caption
         quality = None
@@ -302,14 +313,32 @@ async def auto_rename_files(client, message):
 
     # Send or edit the post in the target channel
         if len(buttons) > 0:
-            await client.send_photo(
-                TARGET_CHANNEL,
-                photo=POSTER,
-                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}\nLanguage: Tamil",
-                reply_markup=InlineKeyboardMarkup([buttons]),
-            )
+            if episode_number in EPISODE_MESSAGES:
+            # Edit the existing message
+                try:
+                    await client.edit_message_media(
+                        TARGET_CHANNEL,
+                        message_id=EPISODE_MESSAGES[episode_number],
+                        media=pyrogram.types.InputMediaPhoto(
+                            POSTER,
+                            caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}\nLanguage: Tamil"
+                        ),
+                        reply_markup=InlineKeyboardMarkup([buttons]),
+                    )
+                    await message.reply_text("Episode updated successfully ✅")
+                except Exception as e:
+                    await message.reply_text(f"Failed to edit the message: {e}")
+            else:
+            # Send a new message and store its message ID
+                sent_message = await client.send_photo(
+                    TARGET_CHANNEL,
+                    photo=POSTER,
+                    caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}\nLanguage: Tamil",
+                    reply_markup=InlineKeyboardMarkup([buttons]),
+                )
+                EPISODE_MESSAGES[episode_number] = sent_message.id
+                await message.reply_text("Episode posted successfully ✅")
 
-        await message.reply_text("Episode posted successfully ✅")
 
 
     
