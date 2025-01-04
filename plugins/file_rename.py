@@ -2,7 +2,7 @@
 
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, InputMediaPhoto
 from PIL import Image
 from datetime import datetime
 from hachoir.metadata import extractMetadata
