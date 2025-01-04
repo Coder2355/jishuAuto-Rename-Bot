@@ -20,6 +20,7 @@ FILE_STORE_CHANNEL = -1002134913785  # Replace with your store channel ID
 TARGET_CHANNEL = -1002245327685
 POSTER = None
 EPISODE_LINKS = {}
+EPISODE_MESSAGES = {}
 
 renaming_operations = {}  # Track renaming operations
 
