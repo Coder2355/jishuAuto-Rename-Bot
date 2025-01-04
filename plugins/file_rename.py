@@ -267,47 +267,50 @@ async def auto_rename_files(client, message):
                          progress_args=("Upload Started.....", upload_msg, time.time())
                      )
             
-        # Forward to store channel
-        forwarded = await sent_message.forward(STORE_CHANNEL)
-        file_id = forwarded.id
-        encoded_id = encode_file_id(str(file_id))
         file_quality=extract_quality(filename)
         episode_number=extract_episode_number(filename)
+        forwarded = await message.forward(STORE_CHANNEL)
+        file_id = forwarded.id
+        encoded_id = encode_file_id(str(file_id))
+
+        # Generate a download link for the forwarded file
         link = f"https://t.me/{STORE_CHANNEL}/{file_id}?id={encoded_id}"
+
+    # Detect quality from caption
         quality = None
-        if "480p" in file_quality:
+        if "480p" in message.caption:
             quality = "480p"
-        elif "720p" in file_quality:
+        elif "720p" in message.caption:
             quality = "720p"
-        elif "1080p" in file_quality:
+        elif "1080p" in message.caption:
             quality = "1080p"
- 
+
         if not quality:
             await message.reply_text("Please include quality (480p, 720p, 1080p) in the caption.")
             return
-        # Create and send episode links
-        if episode_number not in EPISODE_LINKS:
-            EPISODE_LINKS[episode_number] = {}
-        EPISODE_LINKS[episode_number][quality] = link
 
+    # Update episode links
+        if episode not in EPISODE_LINKS:
+            EPISODE_LINKS[episode] = {}
+        EPISODE_LINKS[episode][quality] = link
+
+    # Create buttons dynamically based on available qualities
         buttons = []
         for q in ["480p", "720p", "1080p"]:
-            if q in EPISODE_LINKS[episode_number]:
-                buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode_number][q]))
+            if q in EPISODE_LINKS[episode]:
+                buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode][q]))
 
-
+    # Send or edit the post in the target channel
         if len(buttons) > 0:
             await client.send_photo(
                 TARGET_CHANNEL,
                 photo=POSTER,
-                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}\nLanguage: Tamil",
+                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
                 reply_markup=InlineKeyboardMarkup([buttons]),
-           )
+            )
 
         await message.reply_text("Episode posted successfully ✅")
 
-
-        await message.reply_text("File renamed and uploaded successfully!")
 
     
         del renaming_operations[file_id]
