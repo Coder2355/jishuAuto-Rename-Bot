@@ -278,11 +278,11 @@ async def auto_rename_files(client, message):
 
     # Detect quality from caption
         quality = None
-        if "480p" in message.caption:
+        if "480p" in file_quality:
             quality = "480p"
-        elif "720p" in message.caption:
+        elif "720p" in file_quality:
             quality = "720p"
-        elif "1080p" in message.caption:
+        elif "1080p" in file_quality:
             quality = "1080p"
 
         if not quality:
@@ -290,22 +290,22 @@ async def auto_rename_files(client, message):
             return
 
     # Update episode links
-        if episode not in EPISODE_LINKS:
-            EPISODE_LINKS[episode] = {}
-        EPISODE_LINKS[episode][quality] = link
+        if episode_number not in EPISODE_LINKS:
+            EPISODE_LINKS[episode_number] = {}
+        EPISODE_LINKS[episode_number][quality] = link
 
     # Create buttons dynamically based on available qualities
         buttons = []
         for q in ["480p", "720p", "1080p"]:
-            if q in EPISODE_LINKS[episode]:
-                buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode][q]))
+            if q in EPISODE_LINKS[episode_number]:
+                buttons.append(InlineKeyboardButton(q, url=EPISODE_LINKS[episode_number][q]))
 
     # Send or edit the post in the target channel
         if len(buttons) > 0:
             await client.send_photo(
                 TARGET_CHANNEL,
                 photo=POSTER,
-                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode}\nQuality: {', '.join(EPISODE_LINKS[episode].keys())}\nLanguage: Tamil",
+                caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}\nLanguage: Tamil",
                 reply_markup=InlineKeyboardMarkup([buttons]),
             )
 
