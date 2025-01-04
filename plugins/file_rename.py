@@ -155,6 +155,7 @@ print(f"Extracted Episode Number: {episode_number}")
 # Inside the handler for file uploads
 @Client.on_message(filters.private & (filters.document | filters.video | filters.audio))
 async def auto_rename_files(client, message):
+    global POSTER
     user_id = message.from_user.id
     firstname = message.from_user.first_name
     format_template = await madflixbotz.get_format_template(user_id)
