@@ -320,7 +320,7 @@ async def auto_rename_files(client, message):
                     await client.edit_message_media(
                         TARGET_CHANNEL,
                         message_id=EPISODE_MESSAGES[episode_number],
-                        media=pyrogram.types.InputMediaPhoto(
+                        media=InputMediaPhoto(
                             POSTER,
                             caption=f"Anime: You are MS Servant\nSeason: 01\nEpisode: {episode_number}\nQuality: {', '.join(EPISODE_LINKS[episode_number].keys())}\nLanguage: Tamil"
                         ),
