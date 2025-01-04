@@ -285,7 +285,7 @@ async def auto_rename_files(client, message):
         converted_id = sent_message.id * abs(client.db_channel.id)
         string = f"get-{converted_id}"
         base64_string = await encode(string)
-        link = f"https://t.me/{client.username}?start={base64_string}
+        link = f"https://t.me/{client.username}?start={base64_string}"
 
     # Detect quality from caption
         quality = None
