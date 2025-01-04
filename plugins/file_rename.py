@@ -268,8 +268,7 @@ async def auto_rename_files(client, message):
                          progress_args=("Upload Started.....", upload_msg, time.time())
                      )
             
-        file_quality=extract_quality(filename)
-        episode_number=extract_episode_number(filename)
+        
         forwarded = await message.forward(STORE_CHANNEL)
         file_id = forwarded.id
         encoded_id = encode_file_id(str(file_id))
@@ -279,11 +278,11 @@ async def auto_rename_files(client, message):
 
     # Detect quality from caption
         quality = None
-        if "480p" in file_quality:
+        if "480p" in extracted_qualities:
             quality = "480p"
-        elif "720p" in file_quality:
+        elif "720p" in extracted_qualities:
             quality = "720p"
-        elif "1080p" in file_quality:
+        elif "1080p" in extracted_qualities:
             quality = "1080p"
 
         if not quality:
